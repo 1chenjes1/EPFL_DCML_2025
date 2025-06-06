@@ -29,8 +29,8 @@ def preprocess_df(fname):
     return df
 
 # Takes df and returns df with columns 'note' and 'pc' with all notes occurring at the same time as list
-def generate_pcs(df_raw):
-    pitchclass = df_raw.copy()
+def generate_pcs(df):
+    pitchclass = df.copy()
     pitchclass = pitchclass.groupby(by=['order'])[['note', 'pc', 'midi']].agg(list).reset_index()
     pitchclass['pcs'] = pitchclass['pc'].apply(lambda x: list(set(x)))
     return pitchclass

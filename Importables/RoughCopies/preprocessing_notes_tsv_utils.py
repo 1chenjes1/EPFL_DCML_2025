@@ -14,11 +14,7 @@ def preprocess_df(fname):
     path_row = base_path + "/" + fname + ".tsv"
 
     try: 
-        df_raw = pd.read_csv(path_row, sep='\t')
-        df = pp.preprocess_df(df_raw)
-        pcs_df = pp.generate_pcs(df)
-
-        df = df_raw.copy()
+        df = pd.read_csv(path_row, sep='\t')
         df['pc'] = df['midi'] % 12
         df = df[df['pc'].notna()]
         df['pc'] = df['pc'].apply(int)
@@ -27,16 +23,15 @@ def preprocess_df(fname):
         df['mc_onset_float'] = df['mc_onset'].apply(lambda x: float(Fraction(x)))
         df['order'] = df['mc'] + df['mc_onset_float']
 
-
     except Exception as e:
-        continue
+        print(f"{e}")
     
-    return pc
+    return df
 
 # Takes df and returns df with columns 'note' and 'pc' with all notes occurring at the same time as list
-def generate_pcs(df_raw):
-    pitchclass = df_raw.copy()
-    pitchclass = pitchclass.groupby(by=['order'])[['note', 'pc']].agg(list).reset_index()
+def generate_pcs(df):
+    pitchclass = df.copy()
+    pitchclass = pitchclass.groupby(by=['order'])[['note', 'pc', 'midi']].agg(list).reset_index()
     pitchclass['pcs'] = pitchclass['pc'].apply(lambda x: list(set(x)))
     return pitchclass
 
