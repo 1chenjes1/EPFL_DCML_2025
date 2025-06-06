@@ -6,6 +6,22 @@ from scipy.stats import norm
 import music21 as m21
 import ms3
 
+pitch_class_names = [
+    'B#', 'C',
+    'C#', 'Db',
+    'D',
+    'D#', 'Eb',
+    'E', 'Fb',
+    'F', 'E#',
+    'F#', 'Gb',
+    'G',
+    'G#', 'Ab',
+    'A',
+    'A#', 'Bb',
+    'B', 'Cb'
+]
+
+
 def load_df():
 
 
@@ -68,8 +84,7 @@ def label_to_pcs(label):
     pcs = sorted([p.pitchClass for p in cs.pitches])
     return pcs
 
-
-
+# FIX !!!!!
 def generate_pcs(df):
     pitchclass = df.copy()
     pitchclass = pitchclass.groupby(by=['order'])[['note', 'pc', 'midi']].agg(list).reset_index()
