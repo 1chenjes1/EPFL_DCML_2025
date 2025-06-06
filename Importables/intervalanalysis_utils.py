@@ -6,6 +6,44 @@ import numpy as np
 from scipy.stats import norm
 import music21 as m21
 
+# Takes df and returns df with columns 'note' and 'pc' with all notes occurring at the same time as list
+# EDITTTT !!!! So that it generates ILC and OLC
+def generate_pcs(df_raw):
+    pitchclass = df_raw.copy()
+    pitchclass = pitchclass.groupby(by=['order'])[['note', 'pc']].agg(list).reset_index()
+    pitchclass['pcs'] = pitchclass['pc'].apply(lambda x: list(set(x)))
+    return pitchclass
+
+# Takes df and returns true if there exists harmony
+# EDIT????? to be compatible with ILC and OLC
+def contains_harmony(pc):
+    test = pc[pc['pc'].apply(lambda x: len(x) > 1)].copy()
+    if test.empty:
+        return False
+    else:
+        return True
+
+# takes metadata and filters by those containing harmony
+def harmony_df(metadata, base_path):
+    dfs = []
+    for row in range(metadata.shape[0]): 
+        path_row = base_path + "/" + metadata.iloc[row,1] + ".tsv"
+        try: 
+            df = pd.read_csv(path_row, sep='\t')
+            pc = preprocess_df(df)
+    
+            if (contains_harmony(pc) == True):
+                pc['artists'] = metadata.iloc[row]['artists']
+                pc['workTitle'] = metadata.iloc[row]['workTitle']
+                pc['fnames'] = metadata.iloc[row]['fnames']
+                pc['recording_year'] = metadata.iloc[row]['recording_year']
+                dfs.append(pc)
+        except Exception as e:
+            continue
+    
+    dfs = pd.concat(dfs, ignore_index=True)
+    return dfs
+    
 # Takes list of notes and returns list of interval classes between all note pairs
 def interval_class(notes):
     interval_classes = []
@@ -26,15 +64,12 @@ def interval_class(notes):
     
     return interval_classes
 
-# Takes df and returns df with column 'dissonance' which calculates normalized dissonance index of each harmony
-def dissonance(pc):
-    harmonies = pc[pc['pc'].apply(lambda x: len(x) > 1)].copy()
-    harmonies['interval'] = harmonies['pc'].apply(interval_class)
-    harmonies['num notes'] = harmonies['pc'].apply(lambda x: len(x))
-    harmonies['dissonance'] = (
-        harmonies['interval'].apply(lambda x: sum(dissonance_table[i] for i in x))
-    ) / harmonies['num notes']
-    return harmonies
+# Takes list of pc and returns int (normalized dissonance index of pitch class set)
+def dissonance(harmony):
+    ic = interval_class(harmony)
+    num_notes = len(harmony)
+    dissonance = (sum([dissonance_table[i] for i in ic])) / num_notes
+    return dissonance 
 
 dissonance_table = {
     0: 0.0,    # Unison
