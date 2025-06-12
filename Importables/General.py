@@ -20,11 +20,46 @@ pitch_class_names = [
     'A#', 'Bb',
     'B', 'Cb'
 ]
+def load_labels():
+    md_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv"
+    metadata = pd.read_csv(md_path, sep='\t')
+    metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
 
+    dfs = []
+    for _, row in metadata.iterrows():
+        rel_paths = row['rel_paths']
+        fnames = row['fnames']
+        
+        base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+        labels_path = base_path + "/labels/" + fnames + ".labels.tsv"
+        
+        try: 
+            df_labels = pd.read_csv(labels_path, sep='\t')
+            df_labels['artist'] = row['artists']
+            df_labels['workTitle'] = row['workTitle']
+            df_labels['fnames'] = row['fnames']
+            df_labels['rel_paths'] = row['rel_paths']
+            df_labels['recording_year'] = row['recording_year']
+            
+            df_labels['mc'] = df_labels['mc'].astype(int)
+            df_labels['mc_onset'] = df_labels['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
+            df_labels['time'] = df_labels['mc'] + df_labels['mc_onset']
+
+            df_labels = df_labels.sort_values(by='time')
+
+            dfs.append(df_labels)
+
+    
+        except Exception as e:
+            #print(f'{e}')
+            continue
+    
+    dfs = pd.concat(dfs, ignore_index=True)
+    
+    return dfs
+    
 
 def load_df():
-
-
     md_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv"
     metadata = pd.read_csv(md_path, sep='\t')
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
@@ -48,6 +83,7 @@ def load_df():
             df_notes['note'] = df_notes['tpc'].apply(ms3.tpc2name)
         
             df_notes['mc_onset'] = df_notes['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
+            df_notes['duration'] = df_notes['duration'].astype(str).apply(lambda x: float(Fraction(x)))
             df_notes['time'] = df_notes['mc'] + df_notes['mc_onset']
 
             df_notes['artist'] = row['artists']
@@ -86,8 +122,7 @@ def label_to_pcs(label):
 
 # FIX !!!!!
 def generate_pcs(df):
-    pitchclass = df.copy()
-    pitchclass = pitchclass.groupby(by=['order'])[['note', 'pc', 'midi']].agg(list).reset_index()
+    pitchclass = df.groupby(by=['order'])[['note', 'pc', 'midi']].agg(list).reset_index()
     pitchclass['pcs'] = pitchclass['pc'].apply(lambda x: list(set(x)))
     return pitchclass
     
@@ -105,4 +140,11 @@ def groupby_standard(df, length=3):
     title_grouped = df[df['workTitle'].isin(ref_filtered['workTitle'])]
 
     return title_grouped, ref_filtered
+
+import re
+
+def fix_flats(label):
+    # Replace flats in the root (only at beginning or after slash)
+    label = re.sub(r'([A-Ga-g])b', r'\1-', label)
+    return label
 

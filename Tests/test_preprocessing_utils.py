@@ -27,3 +27,10 @@ def test_load_df_2():
     df_result = df_result.iloc[0]['label']
     
     assert pd.isna(df_result) == True
+
+def test_fix_flats():
+    labels = ['Bbmaj7', 'Eb/C', 'Ab7/G', 'Dbmaj7', 'Gbm7', 'D7b9', 'Cmb5']
+    expected = ['B-maj7', 'E-/C', 'A-7/G', 'D-maj7', 'G-m7', 'D7b9', 'Cmb5']
+
+    for input_label, expected_label in zip(labels, expected):
+        assert fix_flats(input_label) == expected_label
