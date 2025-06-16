@@ -5,6 +5,7 @@ import numpy as np
 from scipy.stats import norm
 import music21 as m21
 import ms3
+from functools import lru_cache
 
 pitch_class_names = [
     'B#', 'C',
@@ -45,6 +46,9 @@ def load_labels():
             df_labels['mc_onset'] = df_labels['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
             df_labels['time'] = df_labels['mc'] + df_labels['mc_onset']
 
+            df_labels['label'] = df_labels['label'].apply(clean_chord_label)
+            df_labels['ILS'] = df_labels['label'].apply(get_ilset)
+
             df_labels = df_labels.sort_values(by='time')
 
             dfs.append(df_labels)
@@ -57,6 +61,34 @@ def load_labels():
     dfs = pd.concat(dfs, ignore_index=True)
     
     return dfs
+
+
+def load_metadata():
+    md_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv"
+    metadata = pd.read_csv(md_path, sep='\t')
+    metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
+
+    metadata['key'] = None
+
+    for i, row in metadata.iterrows():
+        rel_paths = row['rel_paths']
+        fnames = row['fnames']
+        
+        base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+        score_path = f"{base_path}/{rel_paths}/{fnames}.xml"
+        
+        try: 
+            score = m21.converter.parse(score_path)
+            key = score.analyze('key')
+            metadata.loc[i, 'key'] = str(key)
+
+    
+        except Exception as e:
+            #print(f'{e}')
+            continue
+
+    
+    return metadata
     
 
 def load_df():
@@ -96,11 +128,14 @@ def load_df():
             df_labels['mc'] = df_labels['mc'].astype(int)
             df_labels['mc_onset'] = df_labels['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
             df_labels['time'] = df_labels['mc'] + df_labels['mc_onset']
+            
+            df_labels['label'] = df_labels['label'].apply(clean_chord_label)
+            df_labels['ILS'] = df_labels['label'].apply(get_ilset)
 
             df_labels = df_labels.sort_values(by='time')
             df_notes = df_notes.sort_values(by='time')
             
-            df = pd.merge_asof(df_notes, df_labels[['time', 'label']], on='time', direction='backward')
+            df = pd.merge_asof(df_notes, df_labels[['time', 'label', 'ILS']], on='time', direction='backward')
 
             dfs.append(df)
 
@@ -120,31 +155,36 @@ def label_to_pcs(label):
     pcs = sorted([p.pitchClass for p in cs.pitches])
     return pcs
 
-# FIX !!!!!
-def generate_pcs(df):
-    pitchclass = df.groupby(by=['order'])[['note', 'pc', 'midi']].agg(list).reset_index()
-    pitchclass['pcs'] = pitchclass['pc'].apply(lambda x: list(set(x)))
-    return pitchclass
-    
-def groupby_standard(df, length=3):
-    # Step 1: Get unique (fnames, workTitle) pairs
-    ref = df[['fnames', 'workTitle']].drop_duplicates()
-
-    # Step 2: Group by workTitle → count how many files (fnames) per title
-    ref_count = ref.groupby('workTitle').size().reset_index(name='count')
-
-    # Step 3: Keep only titles with ≥ length files
-    ref_filtered = ref_count[ref_count['count'] >= length]
-
-    # Step 4: Filter big df to only those titles
-    title_grouped = df[df['workTitle'].isin(ref_filtered['workTitle'])]
-
-    return title_grouped, ref_filtered
 
 import re
-
 def fix_flats(label):
     # Replace flats in the root (only at beginning or after slash)
     label = re.sub(r'([A-Ga-g])b', r'\1-', label)
     return label
+
+def clean_chord_label(label):
+    if not isinstance(label, str):
+        return label
+        
+    label = re.sub(r'\((.*?)\)', r'\1', label)
+    label = fix_flats(label)
+    
+    label = label.replace('Maj', 'maj')   # fix Maj7 → maj7
+    label = label.strip()
+    
+    return label
+
+@lru_cache(maxsize=None)
+def parse_chord(label):
+    return m21.harmony.ChordSymbol(label)
+
+def get_ilset(label):
+    try:
+        chord = parse_chord(label)
+        chord_pitches = chord.pitches
+        chord_tones = [p.name for p in chord_pitches]
+        return chord_tones
+    except Exception as e:
+        return np.nan
+
 
