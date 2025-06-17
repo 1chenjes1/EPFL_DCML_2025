@@ -21,7 +21,7 @@ def parse_chord(label):
     return m21.harmony.ChordSymbol(label)
 
 from itertools import combinations
-def get_intervals(pcs):
+def get_intervals_semitones(pcs):
     intervals = []
     semitones = []
 
@@ -36,13 +36,13 @@ def get_intervals(pcs):
         if isinstance(pc2, m21.pitch.Pitch):
             p2 = pc2
         else:
-            p2 = m21.pitch.Pitch(pc2)
+            p2 = m21.pitch.Pitch(pc2) 
 
         aInterval = m21.interval.Interval(pitchStart=p1, pitchEnd=p2)
         intervals.append(aInterval.simpleName)
         semitones.append(aInterval.semitones)
     
-    return intervals, semitones 
+    return intervals, semitones
 
 
 def label_to_intervals(label):
@@ -50,7 +50,7 @@ def label_to_intervals(label):
         chord = parse_chord(label)
         pcs = [p.pitchClass for p in chord.pitches]
 
-        intervals = get_intervals(pcs)
+        intervals, semitones = get_intervals(pcs)
         
         return intervals
 
@@ -129,18 +129,17 @@ def plot_interval_distribution(songs, artists, data):
             
             # Extract pitch profile data for (song, artist)
             interval = data[(song, artist)]
-            interval = pd.DataFrame({'interval': interval['interval'], 'duration': interval['duration_qb']})
-            interval = interval.explode('interval')
-
-            interval['interval_name'] = interval['interval'].map(pc_to_interval_name)
+            interval = pd.DataFrame({'interval_name': interval['interval'], 'duration': interval['duration_qb']})
+            interval = interval.explode('interval_name')
 
             interval_counts = (
-                interval.groupby(['interval', 'interval_name'])['duration']
+                interval.groupby(['interval_name'])['duration']
                 .sum()
                 .reset_index(name='weighted_count')
             )
 
-            count = interval_counts.sort_values('interval')
+            interval_counts['semitone'] = interval_counts['interval_name'].apply(lambda x: m21.interval.Interval(x).semitones)
+            count = interval_counts.sort_values('semitone')
             total = count['weighted_count'].sum()
             count['percentage'] = count['weighted_count'] / total
 

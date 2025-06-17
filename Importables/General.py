@@ -7,6 +7,11 @@ import music21 as m21
 import ms3
 from functools import lru_cache
 
+import sys
+sys.path.append('/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/')
+
+from Importables import intervalanalysis_utils as ia
+
 pitch_class_names = [
     'B#', 'C',
     'C#', 'Db',
@@ -21,11 +26,62 @@ pitch_class_names = [
     'A#', 'Bb',
     'B', 'Cb'
 ]
-def load_labels():
-    md_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv"
-    metadata = pd.read_csv(md_path, sep='\t')
-    metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
 
+def load_metadata():
+    metadata = pd.read_csv("/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv", sep='\t')
+    metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
+    return metadata
+    
+def load_harmonies(metadata):
+    metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
+    dfs = []
+    for _, row in metadata.iterrows():
+        rel_paths = row['rel_paths']
+        fnames = row['fnames']
+        
+        base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+        score_path = f"{base_path}/{rel_paths}/{fnames}.xml"
+        
+        score = m21.converter.parse(score_path)
+        
+        for h in score.recurse().getElementsByClass('Harmony'):
+            score.remove(h, recurse=True)
+            
+        chords = score.chordify()
+            
+        # Build list of dictionaries to collect data
+        rows = []
+        
+        for thisChord in chords.recurse().getElementsByClass(m21.chord.Chord):
+            h = [p for p in thisChord.pitches]
+            
+            if len(h) <= 1:
+                continue
+                
+            intervals, semitones = ia.get_intervals_semitones(h)
+        
+            rows.append({
+                'artist': row['artists'],
+                'workTitle': row['workTitle'],
+                'fnames': fnames,
+                'rel_paths': rel_paths,
+                'recording_year': row['recording_year'],
+                'time': thisChord.offset,
+                'duration_qb': thisChord.quarterLength,
+                'harmony': h,
+                'interval': intervals,
+                'semitones': semitones
+            })
+            
+        # Convert to DataFrame
+        dfs.append(pd.DataFrame(rows))
+    
+    dfs = pd.concat(dfs, ignore_index=True)
+    
+    return dfs
+    
+def load_labels(metadata):
+    metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
     dfs = []
     for _, row in metadata.iterrows():
         rel_paths = row['rel_paths']
@@ -63,9 +119,8 @@ def load_labels():
     return dfs
 
 
-def load_metadata():
-    md_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv"
-    metadata = pd.read_csv(md_path, sep='\t')
+def load_keys(metadata):
+
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
 
     metadata['key'] = None
@@ -92,8 +147,6 @@ def load_metadata():
     
 
 def load_df():
-    md_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv"
-    metadata = pd.read_csv(md_path, sep='\t')
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
 
     dfs = []
