@@ -50,7 +50,7 @@ def label_to_intervals(label):
         chord = parse_chord(label)
         pcs = [p.pitchClass for p in chord.pitches]
 
-        intervals, semitones = get_intervals(pcs)
+        intervals, semitones = get_intervals_semitones(pcs)
         
         return intervals
 
@@ -90,64 +90,73 @@ dissonance_table = {
 }
 
 # takes df and returns data dict with songs and artists
-def create_data(df):
+def create_data(subset, identifier):
     data = {}
-    songs = []
-    artists = []
-    
-    for row in range(df.shape[0]):
-        df_row = df.iloc[[row]]
-        worktitle = df_row.iloc[0]['workTitle']
+
+    for row in range(subset.shape[0]):
+        subset_row = subset.iloc[[row]]
+
+        if isinstance(identifier, (list, tuple)):
+            key = tuple(subset_row.iloc[0][col] for col in identifier)
+            
+        else:
+            key = subset_row.iloc[0][identifier]
+            
+
+        data[key] = subset_row.iloc[0][['interval', 'duration_qb']]
         
-        if worktitle not in songs:
-            songs.append(worktitle)
-        
-        
-        artist = (df_row.iloc[0]['artist'])
-    
-        if artist not in artists:
-            artists.append(artist)
-    
-        key = (worktitle, artist)
-        data[key] = df_row.iloc[0][['interval', 'duration_qb']]
-        
-    return songs, artists, data
+    return data
     
 # takes list, list, dict
-def plot_interval_distribution(songs, artists, data):
-    # Create figure with 2 subfigures
-    fig = plt.figure(figsize=(12, 9), constrained_layout=True)
-    subfigs = fig.subfigures(nrows=2, ncols=1)
+def plot_interval_distribution(data, identifier, fig_name = False):
+    keys = list(data.keys())
+    num_items = len(keys)
+    
+    fig = plt.figure(figsize=(12, 4.5 * num_items))
+    subfigs = fig.subfigures(nrows=num_items, ncols=1)
 
-    for i, song in enumerate(songs):
+    if num_items == 1:
+        subfigs = [subfigs]  # make iterable
+
+    for i, key in enumerate(keys):
         subfig = subfigs[i]
-        subfig.suptitle(f'{song}', fontsize=14)
-        axs = subfig.subplots(nrows=1, ncols=2)
 
-        for j, artist in enumerate(artists):
-            ax = axs[j]
-            
-            # Extract pitch profile data for (song, artist)
-            interval = data[(song, artist)]
-            interval = pd.DataFrame({'interval_name': interval['interval'], 'duration': interval['duration_qb']})
-            interval = interval.explode('interval_name')
+        # Format title from key (tuple or string)
+        if isinstance(key, tuple):
+            label = " – ".join(str(k) for k in key)
+        else:
+            label = str(key)
 
-            interval_counts = (
-                interval.groupby(['interval_name'])['duration']
-                .sum()
-                .reset_index(name='weighted_count')
-            )
+        subfig.suptitle(f'{label}', fontsize=14)
 
-            interval_counts['semitone'] = interval_counts['interval_name'].apply(lambda x: m21.interval.Interval(x).semitones)
-            count = interval_counts.sort_values('semitone')
-            total = count['weighted_count'].sum()
-            count['percentage'] = count['weighted_count'] / total
+        ax = subfig.subplots(nrows=1, ncols=1)
 
-            # Plot bar chart
-            ax.bar(count['interval_name'], count['percentage'], color='skyblue', edgecolor='black')
-            ax.set_title(f'Artist: {artist}')
-            ax.set_xlabel('Interval')
-            ax.set_ylabel('Percentage')
+        # Get the pitch profile data:
+        interval = data[key]
+        interval = pd.DataFrame({'interval_name': interval['interval'], 'duration': interval['duration_qb']})
+        interval = interval.explode('interval_name')
 
-    fig.suptitle('Harmony Label Interval Distribution of 2 Songs by 2 Artists', fontsize=16)
+        interval_counts = (
+            interval.groupby(['interval_name'])['duration']
+            .sum()
+            .reset_index(name='weighted_count')
+        )
+
+        interval_counts['semitone'] = interval_counts['interval_name'].apply(lambda x: m21.interval.Interval(x).semitones)
+        count = interval_counts.sort_values('semitone')
+        total = count['weighted_count'].sum()
+        count['percentage'] = count['weighted_count'] / total
+
+        # Plot bar chart
+        ax.bar(count['interval_name'], count['percentage'], color='skyblue', edgecolor='black')
+        ax.set_xlabel('Interval')
+        ax.set_ylabel('Percentage')
+
+    # Global figure title:
+    fig.suptitle(f'Harmony Label Interval Distribution by {identifier}', fontsize=16)
+    
+    if fig_name:
+        plt.savefig(f"../Results/{fig_name}")
+
     plt.show()
+    
