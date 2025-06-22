@@ -73,11 +73,23 @@ pc_to_interval_name = {
 }
 
 # Takes list of pc and returns int (normalized dissonance index of pitch class set)
-def dissonance(harmony):
-    ic = interval_class(harmony)
-    num_notes = len(harmony)
-    dissonance = (sum([dissonance_table[i] for i in ic])) / num_notes
-    return dissonance 
+def label_to_dissonance(label):
+    try:
+        chord = parse_chord(label)
+        pcs = [p.pitchClass for p in chord.pitches]
+
+        intervals, semitones = get_intervals_semitones(pcs)
+
+        semitones = [item % 12 for item in semitones]
+        
+        num_notes = len(pcs)
+        dissonance = (sum([dissonance_table[i] for i in semitones])) / num_notes
+        return dissonance 
+    
+    except Exception as e:
+        # print(f"{e}")
+        return np.nan
+    
 
 dissonance_table = {
     0: 0.0,    # Unison
@@ -87,6 +99,11 @@ dissonance_table = {
     4: 0.2,    # M3/m6 
     5: 0.0,    # P4/P5
     6: 0.8,    # Tritone
+    7: 0.0,
+    8: 0.2,
+    9: 0.4,
+    10: 0.6,
+    11: 1.0,
 }
 
 # takes df and returns data dict with songs and artists
