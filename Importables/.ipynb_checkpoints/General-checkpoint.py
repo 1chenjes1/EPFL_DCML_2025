@@ -215,7 +215,8 @@ def label_to_pcs(label):
 
 import re
 def fix_flats(label):
-    # Replace flats in the root (only at beginning or after slash)
+    label = re.sub(r'([A-Ga-g])bbb', r'\1---', label)
+    label = re.sub(r'([A-Ga-g])bb', r'\1--', label)
     label = re.sub(r'([A-Ga-g])b', r'\1-', label)
     return label
 
@@ -226,8 +227,14 @@ def clean_chord_label(label):
     label = re.sub(r'\((.*?)\)', r'\1', label)
     label = fix_flats(label)
     
-    label = label.replace('Maj', 'maj')   # fix Maj7 → maj7
+    label = label.replace('Maj', 'M')
+    label = label.replace('maj', 'M')
+    
+    label = label.replace('min', 'm')
+
+    label = label.replace('M6', '6')
     label = label.strip()
+
     
     return label
 

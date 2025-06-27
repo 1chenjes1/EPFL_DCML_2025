@@ -6,9 +6,14 @@ from Importables import pitchanalysis_utils as pa
 from Importables import intervalanalysis_utils as ia
 
 def test_dissonance_2():
-    result = 0.76
     harmony = [11,3,6,9,1]
-    assert result == ia.dissonance(harmony)
+    result = 1.0333
+    assert result == ia.label_to_dissonance(label)
+    
+def test_dissonance_2():
+    result = 0.76
+    label = "EMaj7add9"
+    assert result == ia.label_to_dissonance(label)
 
 
 ## TESTING HARMONY LABELS

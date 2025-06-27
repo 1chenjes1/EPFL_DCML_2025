@@ -58,7 +58,7 @@ def plot_pitch_distribution(data, identifier, fig_name = False):
         count['percentage'] = count['weighted_count'] / total
 
         # Plot histogram:
-        ax.bar(count['note'], count['percentage'], color='skyblue', edgecolor='black')
+        ax.(count['note'], count['percentage'], color='skyblue', edgecolor='black')
         ax.set_xlabel('Pitch')
         ax.set_ylabel('Percentage')
 
