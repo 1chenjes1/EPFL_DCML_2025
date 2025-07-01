@@ -30,6 +30,7 @@ pitch_class_names = [
 def load_metadata():
     metadata = pd.read_csv("/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv", sep='\t')
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
+    metadata['recording_year'] = pd.to_numeric(metadata['recording_year'], errors='coerce')
     return metadata
     
 def load_harmonies(metadata):
