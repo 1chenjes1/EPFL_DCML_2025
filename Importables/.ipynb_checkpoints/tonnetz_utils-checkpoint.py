@@ -172,6 +172,27 @@ def transformation(labels):
                           'artist': artist,
                           'recording_year': recording_year
                          }
+            elif current_label.isDiminishedTriad() or current_label.isAugmentedTriad():
+                result = {'chord_1': last_label_name, 
+                          'chord_2': current_label_name,
+                          'transformation': 'N/A',
+                          'fname': fname,
+                          'artist': artist,
+                          'recording_year': recording_year
+                         }
+                if current_label_name not in exceptions:
+                    exceptions.append(current_label_name)
+
+            elif last_label.isDiminishedTriad() or last_label.isAugmentedTriad():
+                result = {'chord_1': last_label_name, 
+                          'chord_2': current_label_name,
+                          'transformation': 'N/A',
+                          'fname': fname,
+                          'artist': artist,
+                          'recording_year': recording_year
+                         }
+                if last_label_name not in exceptions:
+                    exceptions.append(last_label_name)
                 
             # Parallel Case   
             elif is_parallel(l1,l3,l5,c1,c3,c5):
