@@ -271,4 +271,118 @@ def transformation(labels):
             
     df = pd.DataFrame(rows_list) 
 
-    return df,exceptions 
+    return df,exceptions
+
+def P(chord):
+    third = chord.third
+    
+    if chord.isMajorTriad():
+        new_third = third.transpose(-1)  
+        new_chord = m21.chord.Chord([chord.root(), new_third, chord.fifth]) 
+    elif chord.isMinorTriad():
+        new_third = third.transpose(1)  
+        new_chord = m21.chord.Chord([chord.root(), new_third, chord.fifth]) 
+    else:
+        return None  
+
+    return new_chord
+
+def R(chord):
+    root = chord.root()
+
+    if chord.isMajorTriad():
+        new_root = root.transpose(-3)  
+        new_chord = m21.chord.Chord([new_root, new_root.transpose(3), new_root.transpose(7)]) 
+    elif chord.isMinorTriad():
+        new_root = root.transpose(3)  
+        new_chord = m21.chord.Chord([new_root, new_root.transpose(4), new_root.transpose(7)]) 
+    else:
+        return None 
+        
+    return new_chord
+
+
+def L(chord):
+    root = chord.root()
+
+    if chord.isMajorTriad():
+        new_root = root.transpose(4)  
+        new_chord = m21.chord.Chord([new_root, new_root.transpose(3), new_root.transpose(7)]) 
+    elif chord.isMinorTriad():
+        new_root = root.transpose(-4)  
+        new_chord = m21.chord.Chord([new_root, new_root.transpose(4), new_root.transpose(7)]) 
+    else:
+        return None 
+
+    return new_chord
+
+def chord_symbol_to_chord(chord_symbol_name):
+    cs = m21.harmony.ChordSymbol(chord_symbol_name)
+    pitches = cs.pitches 
+    chord = m21.chord.Chord(pitches)
+    return chord
+
+def find_two_step_sequence(chord1_name, chord2_name):
+    chord1 = chord_symbol_to_chord(chord1_name)
+    chord2 = chord_symbol_to_chord(chord2_name)
+    transformations = {'P': P, 'R': R, 'L': L}
+    results = None
+
+    for t1_name, t1_func in transformations.items():
+        mid_chord = t1_func(chord1)
+
+        if mid_chord is None:
+            continue
+        for t2_name, t2_func in transformations.items():
+            mid_chord_copy = m21.chord.Chord([p for p in mid_chord.pitches])
+            final_chord = t2_func(mid_chord_copy)
+            if final_chord is None:
+                continue
+            if final_chord.pitchClasses == chord2.pitchClasses:
+                results = t1_name + t2_name
+
+    return results
+
+def double_transformations(transformations):
+    rows_list = []
+    exceptions = []
+    for index, row in transformations.iterrows():
+        chord1 = row['chord_1']
+        chord2 = row['chord_2']
+        artist = row['artist']
+        fname = row['fname']
+        recording_year = row['recording_year']
+        try:
+            dt = find_two_step_sequence(chord1, chord2)
+
+            if dt is not None:
+                result = {'chord_1': chord1, 
+                          'chord_2': chord2,
+                          'transformation': dt,
+                          'fname': fname,
+                          'artist': artist,
+                          'recording_year': recording_year
+                         }
+            else:
+                result = {'chord_1': chord1, 
+                          'chord_2': chord2,
+                          'transformation': 'N/A',
+                          'fname': fname,
+                          'artist': artist,
+                          'recording_year': recording_year
+                     }
+            
+        except:
+            result = {'chord_1': chord1, 
+                      'chord_2': chord2,
+                      'transformation': 'N/A',
+                      'fname': fname,
+                      'artist': artist,
+                      'recording_year': recording_year
+                     }
+
+        rows_list.append(result)   
+
+    df = pd.DataFrame(rows_list) 
+
+    return df

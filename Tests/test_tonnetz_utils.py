@@ -159,6 +159,7 @@ def test_none_1():
     expected = "N/A"
     
     result, _ = t.transformation(data)
+    assert result.iloc[0]['transformation'] == expected
 
 def test_none_2():
     data_raw = {"label": ['Amin', 'Cmin'],
@@ -170,6 +171,8 @@ def test_none_2():
     
     result, _ = t.transformation(data)
 
+    assert result.iloc[0]['transformation'] == expected
+
 def test_none_3():
     data_raw = {"label": ['C', 'Bmin'],
                'fnames': 'p',
@@ -180,6 +183,8 @@ def test_none_3():
     
     result, _ = t.transformation(data)
 
+    assert result.iloc[0]['transformation'] == expected
+
 def test_none_4():
     data_raw = {"label": ['Amin', 'B'],
                'fnames': 'p',
@@ -189,3 +194,54 @@ def test_none_4():
     expected = "N/A"
     
     result, _ = t.transformation(data)
+    assert result.iloc[0]['transformation'] == expected
+
+def test_RP():
+    chord1_name = 'C'
+    chord2_name = 'A'
+    expected = 'RP'
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
+def test_LP():
+    chord1_name = 'C'
+    chord2_name = 'E'
+    expected = 'LP'
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
+def test_PR():
+    chord1_name = 'C'
+    chord2_name = 'E-'
+    expected = 'PR'
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
+def test_PL():
+    chord1_name = 'C'
+    chord2_name = 'A-'
+    expected = 'PL'
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
+def test_LP():
+    chord1_name = 'A-'
+    chord2_name = 'C'
+    expected = 'LP'
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
+def test_RP():
+    chord1_name = 'E-'
+    chord2_name = 'C'
+    expected = 'RP'
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
+    
