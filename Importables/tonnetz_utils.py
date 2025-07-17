@@ -254,6 +254,16 @@ def transformation(labels):
                           'artist': artist,
                           'recording_year': recording_year
                          }
+
+            elif find_two_step_sequence(last_label_name, current_label_name) is not None:
+                transformation = find_two_step_sequence(last_label_name, current_label_name)
+                result = {'chord_1': last_label_name, 
+                          'chord_2': current_label_name,
+                          'transformation': transformation,
+                          'fname': fname,
+                          'artist': artist,
+                          'recording_year': recording_year
+                         }
             
             # No transformation Case
             else:
@@ -276,10 +286,10 @@ def transformation(labels):
 def P(chord):
     third = chord.third
     
-    if chord.isMajorTriad():
+    if chord.quality == 'major':
         new_third = third.transpose(-1)  
         new_chord = m21.chord.Chord([chord.root(), new_third, chord.fifth]) 
-    elif chord.isMinorTriad():
+    elif chord.quality == 'minor':
         new_third = third.transpose(1)  
         new_chord = m21.chord.Chord([chord.root(), new_third, chord.fifth]) 
     else:
@@ -290,31 +300,39 @@ def P(chord):
 def R(chord):
     root = chord.root()
 
-    if chord.isMajorTriad():
-        new_root = root.transpose(-3)  
-        new_chord = m21.chord.Chord([new_root, new_root.transpose(3), new_root.transpose(7)]) 
-    elif chord.isMinorTriad():
-        new_root = root.transpose(3)  
-        new_chord = m21.chord.Chord([new_root, new_root.transpose(4), new_root.transpose(7)]) 
-    else:
-        return None 
+    if chord.quality == 'major':
+        i = m21.interval.Interval('-m3')
+        new_root = root.transpose(i)  
+        third = new_root.transpose('m3')
+        fifth = new_root.transpose('P5')
+        return m21.chord.Chord([new_root, third, fifth])
+    elif chord.quality == 'minor':
+        i = m21.interval.Interval('m3')
+        new_root = root.transpose(i)  
+        third = new_root.transpose('M3')
+        fifth = new_root.transpose('P5')
+        return m21.chord.Chord([new_root, third, fifth])
         
-    return new_chord
+    return None
 
 
 def L(chord):
     root = chord.root()
 
-    if chord.isMajorTriad():
-        new_root = root.transpose(4)  
-        new_chord = m21.chord.Chord([new_root, new_root.transpose(3), new_root.transpose(7)]) 
-    elif chord.isMinorTriad():
-        new_root = root.transpose(-4)  
-        new_chord = m21.chord.Chord([new_root, new_root.transpose(4), new_root.transpose(7)]) 
-    else:
-        return None 
+    if chord.quality == 'major':
+        i = m21.interval.Interval('M3')
+        new_root = root.transpose(i)  
+        third = new_root.transpose('m3')
+        fifth = new_root.transpose('P5')
+        return m21.chord.Chord([new_root, third, fifth])
+    elif chord.quality == 'minor':
+        i = m21.interval.Interval('-M3')
+        new_root = root.transpose(i)  
+        third = new_root.transpose('M3')
+        fifth = new_root.transpose('P5')
+        return m21.chord.Chord([new_root, third, fifth])
 
-    return new_chord
+    return None
 
 def chord_symbol_to_chord(chord_symbol_name):
     cs = m21.harmony.ChordSymbol(chord_symbol_name)
@@ -323,10 +341,9 @@ def chord_symbol_to_chord(chord_symbol_name):
     return chord
 
 def find_two_step_sequence(chord1_name, chord2_name):
-    chord1 = chord_symbol_to_chord(chord1_name)
-    chord2 = chord_symbol_to_chord(chord2_name)
+    chord1 = m21.harmony.ChordSymbol(chord1_name)
+    chord2 = m21.harmony.ChordSymbol(chord2_name)
     transformations = {'P': P, 'R': R, 'L': L}
-    results = None
 
     for t1_name, t1_func in transformations.items():
         mid_chord = t1_func(chord1)
@@ -338,10 +355,15 @@ def find_two_step_sequence(chord1_name, chord2_name):
             final_chord = t2_func(mid_chord_copy)
             if final_chord is None:
                 continue
-            if final_chord.pitchClasses == chord2.pitchClasses:
-                results = t1_name + t2_name
+            try:
+                if (final_chord.root().name == chord2.root().name and
+                    final_chord.third.name == chord2.third.name and
+                    final_chord.fifth.name == chord2.fifth.name):
+                    return t1_name + t2_name
+            except AttributeError:
+                continue  # skip chords with missing components
 
-    return results
+    return None
 
 def double_transformations(transformations):
     rows_list = []

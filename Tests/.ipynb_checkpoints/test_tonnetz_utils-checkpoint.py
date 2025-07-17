@@ -244,4 +244,12 @@ def test_RP():
 
     assert result == expected
 
+def test_none():
+    chord1_name = 'D'
+    chord2_name = 'B-sus2#7add9add13'
+    expected = None
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
     

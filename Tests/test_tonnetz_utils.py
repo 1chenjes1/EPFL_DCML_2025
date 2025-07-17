@@ -151,7 +151,7 @@ def test_hexpole_minor_to_Major():
     assert result.iloc[0]['transformation'] == expected
 
 def test_none_1():
-    data_raw = {"label": ['A', 'C'],
+    data_raw = {"label": ['A', 'Csus2'],
                'fnames': 'p',
                'artist': 'c',
                'recording_year': 2009}
@@ -162,7 +162,7 @@ def test_none_1():
     assert result.iloc[0]['transformation'] == expected
 
 def test_none_2():
-    data_raw = {"label": ['Amin', 'Cmin'],
+    data_raw = {"label": ['Amin', 'Csus4'],
                'fnames': 'p',
                'artist': 'c',
                'recording_year': 2009}
@@ -240,6 +240,14 @@ def test_RP():
     chord1_name = 'E-'
     chord2_name = 'C'
     expected = 'RP'
+    result = t.find_two_step_sequence(chord1_name, chord2_name)
+
+    assert result == expected
+
+def test_none():
+    chord1_name = 'D'
+    chord2_name = 'B-sus2#7add9add13'
+    expected = None
     result = t.find_two_step_sequence(chord1_name, chord2_name)
 
     assert result == expected
