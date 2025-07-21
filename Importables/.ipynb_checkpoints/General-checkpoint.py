@@ -62,6 +62,7 @@ def load_harmonies(metadata):
                     continue
                     
                 intervals, semitones = ia.get_intervals_semitones(h)
+                intervals_from_root, semitones_from_root = ia.get_intervals_semitones_from_root(h)
             
                 rows.append({
                     'artist': row['artists'],
@@ -73,12 +74,15 @@ def load_harmonies(metadata):
                     'duration_qb': thisChord.quarterLength,
                     'harmony': h,
                     'interval': intervals,
-                    'semitones': semitones
+                    'semitones': semitones,
+                    'interval from root': intervals_from_root,
+                    'semitones from root': semitones_from_root
                 })
                 
             # Convert to DataFrame
             dfs.append(pd.DataFrame(rows))
-        except:
+        except Exception as e:
+            #print(f'error:{e}')
             continue
     
     dfs = pd.concat(dfs, ignore_index=True)
@@ -102,6 +106,7 @@ def load_labels(metadata):
             df_labels['fnames'] = row['fnames']
             df_labels['rel_paths'] = row['rel_paths']
             df_labels['recording_year'] = row['recording_year']
+            df_labels['year_bin'] = row['year_bin']
             
             df_labels['mc'] = df_labels['mc'].astype(int)
             df_labels['mc_onset'] = df_labels['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
@@ -167,7 +172,7 @@ def load_notes(metadata):
             df_notes = pd.read_csv(notes_path, sep='\t')
             df_notes['mc'] = df_notes['mc'].astype(int)
 
-            df_notes['pc'] = df_notes['midi'] % 12
+            df_notes['pc'] = df_notes['midi'] % 24
             df_notes['pc'] = df_notes['pc'].apply(int)
 
             df_notes['note'] = df_notes['tpc'].apply(ms3.tpc2name)

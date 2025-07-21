@@ -6,8 +6,76 @@ import numpy as np
 from scipy.stats import norm
 import music21 as m21
 
+canonical_intervals = [
+    'd1', 'P1', 'm2', 'A1',  # Unison to Augmented Unison
+    'M2', 'd3', 'A2',
+    'm3', 'M3', 'd4', 'A3',
+    'P4', 'A4', 'd5',
+    'P5', 'A5', 'd6',
+    'm6', 'M6', 'A6',
+    'd7', 'm7', 'M7', 'A7',
+    'P8', 'd9', 'm9', 'M9', 'A9',
+    'd10', 'm10', 'M10', 'A10',
+    'P11', 'A11', 'd12',
+    'P12', 'A12', 'd13',
+    'm13', 'M13', 'A13',
+    'd14', 'm14', 'M14', 'A14',
+    'P15', 'A15'
+]
+
+interval_order = {
+    'd1': -1,
+    'P1': 0,
+    'm2': 1,
+    'A1': 1,
+    'M2': 2,
+    'd3': 2,
+    'A2': 3,
+    'm3': 3,
+    'M3': 4,
+    'd4': 4,
+    'A3': 5,
+    'P4': 5,
+    'A4': 6,
+    'd5': 6,
+    'P5': 7,
+    'A5': 8,
+    'd6': 7,
+    'm6': 8,
+    'M6': 9,
+    'A6': 10,
+    'd7': 9,
+    'm7': 10,
+    'M7': 11,
+    'A7': 12,
+    'P8': 12,
+    'd9': 13,
+    'm9': 13,
+    'M9': 14,
+    'A9': 15,
+    'd10': 14,
+    'm10': 15,
+    'M10': 16,
+    'A10': 17,
+    'P11': 17,
+    'A11': 18,
+    'd12': 18,
+    'P12': 19,
+    'A12': 20,
+    'd13': 20,
+    'm13': 20,
+    'M13': 21,
+    'A13': 22,
+    'd14': 21,
+    'm14': 22,
+    'M14': 23,
+    'A14': 24,
+    'P15': 24,
+    'A15': 25
+}
+
+
 # Takes df and returns df with columns 'note' and 'pc' with all notes occurring at the same time as list
-# EDITTTT !!!! So that it generates ILC and OLC
 def generate_pcs(df_raw):
     pitchclass = df_raw.copy()
     pitchclass = pitchclass.groupby(by=['order'])[['note', 'pc']].agg(list).reset_index()
@@ -37,21 +105,32 @@ def get_intervals_semitones(pcs):
         else:
             p2 = m21.pitch.Pitch(pc2) 
 
-        aInterval = m21.interval.Interval(pitchStart=p1, pitchEnd=p2)
-        intervals.append(aInterval.simpleName)
-        semitones.append(aInterval.semitones % 12)
+        aInterval_raw = m21.interval.Interval(pitchStart=p1, pitchEnd=p2)
+        aInterval_semitone = aInterval_raw.semitones % 24
+        aInterval = m21.interval.Interval(aInterval_semitone)
+        intervals.append(aInterval.name)
+        semitones.append(aInterval_semitone)
     
     return intervals, semitones
-    
-def label_to_intervals(label):
-        
-    try:
-        intervals, semitones = label_to_intervals_semitones(label)
-            
-        return intervals
 
-    except Exception as e:
-        return np.nan
+def get_intervals_semitones_from_root(pcs):
+    intervals = []
+    semitones = []
+
+    root = pcs[0]
+    root_pitch = root if isinstance(root, m21.pitch.Pitch) else m21.pitch.Pitch(root)
+
+    for pc in pcs[1:]:
+        
+        current_pitch = pc if isinstance(pc, m21.pitch.Pitch) else m21.pitch.Pitch(pc)
+        interval_raw = m21.interval.Interval(pitchStart=root_pitch, pitchEnd=current_pitch)
+        interval_semitones = interval_raw.semitones % 24
+        interval = m21.interval.Interval(interval_semitones)
+        intervals.append(interval.name)
+        semitones.append(interval_semitones)
+    
+    return intervals, semitones
+
 
 def label_to_intervals_semitones(label):
     root, chord_type = split_harmony_label(label)    
@@ -62,6 +141,8 @@ def label_to_intervals_semitones(label):
             intervals = [m21.interval.Interval(i).simpleName for i in intervals_raw]
 
             semitones = [m21.interval.Interval(i).semitones for i in intervals]
+
+            return intervals, semitones
 
         elif chord_type == '13sus4' :
             chord = parse_chord(root + '13')
@@ -77,7 +158,6 @@ def label_to_intervals_semitones(label):
             P4_pitch = (root_pitch + 5) % 12
             pcs.insert(1, P4_pitch)
             
-            intervals, semitones = get_intervals_semitones(pcs)
 
         elif chord_type == '9sus4':
             chord = parse_chord(root + '9')
@@ -93,7 +173,6 @@ def label_to_intervals_semitones(label):
             P4_pitch = (root_pitch + 5) % 12
             pcs.insert(1, P4_pitch)
             
-            intervals, semitones = get_intervals_semitones(pcs)
             
         elif chord_type == '13no3':
             chord = parse_chord(root + '13')
@@ -102,7 +181,6 @@ def label_to_intervals_semitones(label):
             third_pitch = chord.third.pitchClass
             pcs = [pc for pc in pcs if pc != third_pitch]
             
-            intervals, semitones = get_intervals_semitones(pcs)
 
         elif chord_type == '7no5': 
             chord = parse_chord(root + '7')
@@ -111,7 +189,6 @@ def label_to_intervals_semitones(label):
             fifth_pitch = chord.fifth.pitchClass
             pcs = [pc for pc in pcs if pc != fifth_pitch]
             
-            intervals, semitones = get_intervals_semitones(pcs)
 
         elif chord_type == 'M7no5':
             chord = parse_chord(root + 'M7')
@@ -119,15 +196,93 @@ def label_to_intervals_semitones(label):
             
             fifth_pitch = chord.fifth.pitchClass
             pcs = [pc for pc in pcs if pc != fifth_pitch]
-            
-            intervals, semitones = get_intervals_semitones(pcs)
 
-        
         else:
             chord = parse_chord(label)
             pcs = [p.pitchClass for p in chord.pitches]
     
-            intervals, semitones = get_intervals_semitones(pcs)
+        
+        intervals, semitones = get_intervals_semitones(pcs)
+            
+        
+        return intervals, semitones
+
+    except Exception as e:
+        #print(f'{chord_type}, {label},{e}')
+        return np.nan, np.nan
+
+
+def label_to_intervals_semitones_from_root(label):
+    root, chord_type = split_harmony_label(label)    
+    try:
+        if chord_type == 'm69':
+            intervals_raw = ['m3', 'P5', 'M6', 'M9']
+            
+            intervals = [m21.interval.Interval(i).simpleName for i in intervals_raw]
+
+            semitones = [m21.interval.Interval(i).semitones for i in intervals]
+
+            return intervals, semitones
+
+        elif chord_type == '13sus4' :
+            chord = parse_chord(root + '13')
+            pcs = [p.pitchClass for p in chord.pitches]
+            
+            third_pitch = chord.third.pitchClass
+            root_pitch = chord.root().pitchClass
+            
+            # Remove the third
+            pcs = [pc for pc in pcs if pc != third_pitch]
+            
+            # Add the P4 (5 semitones above root)
+            P4_pitch = (root_pitch + 5) % 12
+            pcs.insert(1, P4_pitch)
+            
+
+        elif chord_type == '9sus4':
+            chord = parse_chord(root + '9')
+            pcs = [p.pitchClass for p in chord.pitches]
+            
+            third_pitch = chord.third.pitchClass
+            root_pitch = chord.root().pitchClass
+            
+            # Remove the third
+            pcs = [pc for pc in pcs if pc != third_pitch]
+            
+            # Add the P4 (5 semitones above root)
+            P4_pitch = (root_pitch + 5) % 12
+            pcs.insert(1, P4_pitch)
+            
+            
+        elif chord_type == '13no3':
+            chord = parse_chord(root + '13')
+            pcs = [p.pitchClass for p in chord.pitches]
+            
+            third_pitch = chord.third.pitchClass
+            pcs = [pc for pc in pcs if pc != third_pitch]
+            
+
+        elif chord_type == '7no5': 
+            chord = parse_chord(root + '7')
+            pcs = [p.pitchClass for p in chord.pitches]
+            
+            fifth_pitch = chord.fifth.pitchClass
+            pcs = [pc for pc in pcs if pc != fifth_pitch]
+            
+
+        elif chord_type == 'M7no5':
+            chord = parse_chord(root + 'M7')
+            pcs = [p.pitchClass for p in chord.pitches]
+            
+            fifth_pitch = chord.fifth.pitchClass
+            pcs = [pc for pc in pcs if pc != fifth_pitch]
+
+        else:
+            chord = parse_chord(label)
+            pcs = [p.pitchClass for p in chord.pitches]
+    
+        
+        intervals, semitones = get_intervals_semitones_from_root(pcs)
             
         
         return intervals, semitones
@@ -208,7 +363,7 @@ def create_data(subset, identifier):
         else:
             key = subset_row.iloc[0][identifier]
             
-        data[key] = subset_row.iloc[0][['interval', 'duration_qb']]
+        data[key] = subset_row.iloc[0][['interval', 'interval from root', 'duration_qb']]
         
     return data
     
