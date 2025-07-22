@@ -154,9 +154,9 @@ def load_keys(metadata):
 
     
     return metadata
-    
 
-def load_notes(metadata):
+
+def load_notes(metadata, keys=False):
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
 
     dfs = []
@@ -176,6 +176,7 @@ def load_notes(metadata):
             df_notes['pc'] = df_notes['pc'].apply(int)
 
             df_notes['note'] = df_notes['tpc'].apply(ms3.tpc2name)
+            df_notes['note'] = df_notes['note'].apply(fix_flats)
         
             df_notes['mc_onset'] = df_notes['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
             df_notes['duration'] = df_notes['duration'].astype(str).apply(lambda x: float(Fraction(x)))
@@ -197,6 +198,15 @@ def load_notes(metadata):
 
             df_labels = df_labels.sort_values(by='time')
             df_notes = df_notes.sort_values(by='time')
+
+            if keys:
+                try:
+                    score_path = f"{base_path}/{rel_paths}/{fnames}.xml"
+                    score = m21.converter.parse(score_path)
+                    key = score.analyze('key')
+                    df_notes['key'] = str(key)
+                except Exception:
+                    df_notes['key'] = np.nan
             
             df = pd.merge_asof(df_notes, df_labels[['time', 'label', 'ILS']], on='time', direction='backward')
 

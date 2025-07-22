@@ -6,6 +6,34 @@ import numpy as np
 from scipy.stats import norm
 import music21 as m21
 
+def get_tpc(note_str):
+    base_tpc = {
+        'F': -1,
+        'C': 0,
+        'G': 1,
+        'D': 2,
+        'A': 3,
+        'E': 4,
+        'B': 5
+    }
+    try:    
+        n = m21.note.Note(note_str)
+        pitch = n.pitch
+        letter = pitch.step 
+
+        # sharp = +1, flat = -1, etc.
+        acc = pitch.accidental
+        acc_offset = acc.alter if acc is not None else 0
+
+        tpc = base_tpc[letter]
+
+        tpc += int(acc_offset * 7)
+
+        return tpc
+        
+    except Exception as e:
+        return None
+
 def create_data(subset, identifier):
     data = {}
 
@@ -17,9 +45,41 @@ def create_data(subset, identifier):
         else:
             key = subset_row.iloc[0][identifier]
 
-        data[key] = subset_row.iloc[0][['note', 'tpc', 'duration']]
+        data[key] = subset_row.iloc[0][['note', 'tpc', 'duration', 'transposed note', 'transposed tpc']]
         
     return data
+
+def transpose_to_C(notes_df):
+    transposed_pcs = []
+    transposed_notes = []
+    transposed_tpc = []
+    
+    for _, row in notes_df.iterrows():
+        
+        try: 
+            note_raw = row['note']
+            note = m21.note.Note(note_raw)
+            key_raw = row['key']
+            key = m21.key.Key(key_raw[0])
+            i = m21.interval.Interval(key.tonic, m21.key.Key('C').tonic)
+    
+            note_new = note.transpose(i)
+
+            transposed_pcs.append(note_new.pitch.pitchClass)
+            transposed_notes.append(note_new.name)
+            transposed_tpc.append(get_tpc(note_new.name))
+            
+        except Exception as e:
+            #print(f'{e}')
+            transposed_pcs.append(np.nan)
+            transposed_notes.append(np.nan)
+            transposed_tpc.append(np.nan)
+
+    notes_df['transposed pc'] = transposed_pcs
+    notes_df['transposed note'] = transposed_notes
+    notes_df['transposed tpc'] = transposed_tpc
+    
+    return notes_df
 
 def plot_pitch_distribution(data, identifier, fig_name = False):
     keys = list(data.keys())
@@ -58,7 +118,7 @@ def plot_pitch_distribution(data, identifier, fig_name = False):
         count['percentage'] = count['weighted_count'] / total
 
         # Plot histogram:
-        ax.(count['note'], count['percentage'], color='skyblue', edgecolor='black')
+        ax.bar(count['note'], count['percentage'], color='skyblue', edgecolor='black')
         ax.set_xlabel('Pitch')
         ax.set_ylabel('Percentage')
 
