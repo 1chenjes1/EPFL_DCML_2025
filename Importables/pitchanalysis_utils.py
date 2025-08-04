@@ -129,3 +129,37 @@ def plot_pitch_distribution(data, identifier, fig_name = False):
         plt.savefig(f"../Jessica-ERIP2025/Results/{fig_name}")
 
     plt.show()
+
+# def get_pitch_profiles(metadata):
+#     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
+#     pitch_profiles = []
+    
+#     for _, row in metadata.iterrows():
+#         pitch_profile = []
+#         rel_paths = row['rel_paths']
+#         fnames = row['fnames']
+        
+#         base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+#         notes_path = base_path + "/notes/" + fnames + ".tsv"
+
+#         try: 
+#             df_notes = pd.read_csv(notes_path, sep='\t')
+#             df_notes['mc'] = df_notes['mc'].astype(int)
+
+#             df_notes['pc'] = df_notes['midi'] % 24
+#             df_notes['pc'] = df_notes['pc'].apply(int)
+
+#             df_notes['note'] = df_notes['tpc'].apply(ms3.tpc2name)
+#             df_notes['note'] = df_notes['note'].apply(fix_flats)
+        
+#             df_notes['mc_onset'] = df_notes['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
+#             df_notes['duration'] = df_notes['duration'].astype(str).apply(lambda x: float(Fraction(x)))
+#             df_notes['time'] = df_notes['mc'] + df_notes['mc_onset']
+
+#             df_notes = df_notes.sort_values(by='time')
+
+#             pitch_profile['artist'] = row['artists']
+#             pitch_profile['workTitle'] = row['workTitle']
+#             pitch_profile['fnames'] = row['fnames']
+#             pitch_profile['rel_paths'] = row['rel_paths']
+#             pitch_profile['recording_year'] = row['recording_year']

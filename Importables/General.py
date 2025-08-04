@@ -27,10 +27,14 @@ pitch_class_names = [
     'B', 'Cb'
 ]
 
+bins = np.arange(1930, 2030, 10) 
+bin_labels = [f"{start}-{start+10}" for start in bins[:-1]]
+
 def load_metadata():
     metadata = pd.read_csv("/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv", sep='\t')
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
     metadata['recording_year'] = pd.to_numeric(metadata['recording_year'], errors='coerce')
+    metadata['year_bin'] = pd.cut(metadata['recording_year'], bins=bins, labels=bin_labels, right=False)
     return metadata
     
 def load_harmonies(metadata):
