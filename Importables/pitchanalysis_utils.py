@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import norm
 import music21 as m21
 
-def get_tpc(note_str):
+def get_tpc(n):
     base_tpc = {
         'F': -1,
         'C': 0,
@@ -16,8 +16,10 @@ def get_tpc(note_str):
         'E': 4,
         'B': 5
     }
-    try:    
-        n = m21.note.Note(note_str)
+    try:
+        if not isinstance(n, m21.note.Note):
+            n = m21.note.Note(n)
+        
         pitch = n.pitch
         letter = pitch.step 
 
