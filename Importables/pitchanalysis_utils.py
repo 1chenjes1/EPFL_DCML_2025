@@ -36,6 +36,33 @@ def get_tpc(n):
     except Exception as e:
         return None
 
+def get_note(tpc):
+    base_note = {
+        -1: 'F',
+        0: 'C',
+        1: 'G',
+        2: 'D',
+        3: 'A',
+        4: 'E',
+        5: 'B'
+    }
+    try:
+        base_tpc = ((tpc + 1) % 7) - 1
+        note_base = base_note[base_tpc]
+
+        accidental = (tpc - base_tpc) // 7
+
+        if accidental > 0:
+            note = note_base + "#" * accidental
+        elif accidental < 0:
+            note = note_base + "-" * (-accidental)
+        else:
+            note = note_base
+
+        return note
+    except Exception as e:
+        return None    
+
 def create_data(subset, identifier):
     data = {}
 
