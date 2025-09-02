@@ -7,31 +7,19 @@ import music21 as m21
 import ms3
 from functools import lru_cache
 
-import sys
-sys.path.append('/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/')
-
 from Importables import intervalanalysis_utils as ia
-
-pitch_class_names = [
-    'B#', 'C',
-    'C#', 'Db',
-    'D',
-    'D#', 'Eb',
-    'E', 'Fb',
-    'F', 'E#',
-    'F#', 'Gb',
-    'G',
-    'G#', 'Ab',
-    'A',
-    'A#', 'Bb',
-    'B', 'Cb'
-]
 
 bins = np.arange(1930, 2030, 10) 
 bin_labels = [f"{start}-{start+10}" for start in bins[:-1]]
 
 def load_metadata():
-    metadata = pd.read_csv("/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions/metadata.tsv", sep='\t')
+    """
+    Returns pd.Dataframe of Jazz metadata
+
+    Return:
+        pd.Dataframe
+    """
+    metadata = pd.read_csv("../jazz_transcriptions/metadata.tsv", sep='\t')
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
         
     metadata['recording_year'] = pd.to_numeric(metadata['recording_year'], errors='coerce')
@@ -39,6 +27,15 @@ def load_metadata():
     return metadata
     
 def load_harmonies(metadata):
+    """
+    Returns harmony info of scores
+
+    Args:
+        metadata: pd.DataFrame containing metadata of scores
+
+    Return:
+        pd.DataFrame 
+    """
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
     dfs = []
     for _, row in metadata.iterrows():
@@ -46,7 +43,7 @@ def load_harmonies(metadata):
             rel_paths = row['rel_paths']
             fnames = row['fnames']
             
-            base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+            base_path = "../jazz_transcriptions" 
             score_path = f"{base_path}/{rel_paths}/{fnames}.xml"
     
     
@@ -75,6 +72,7 @@ def load_harmonies(metadata):
                     'fnames': fnames,
                     'rel_paths': rel_paths,
                     'recording_year': row['recording_year'],
+                    'year_bin': row['year_bin'],
                     'time': thisChord.offset,
                     'duration_qb': thisChord.quarterLength,
                     'harmony': h,
@@ -95,13 +93,22 @@ def load_harmonies(metadata):
     return dfs
     
 def load_labels(metadata):
+    """
+    Returns label information of scores
+
+    Args:
+         metadata: pd.DataFrame containing metadata of scores
+
+    Return:
+        pd.DataFrame 
+    """
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
     dfs = []
     for _, row in metadata.iterrows():
         rel_paths = row['rel_paths']
         fnames = row['fnames']
         
-        base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+        base_path = "../jazz_transcriptions" 
         labels_path = base_path + "/labels/" + fnames + ".labels.tsv"
         
         try: 
@@ -135,7 +142,16 @@ def load_labels(metadata):
 
 
 def load_keys(metadata):
+    """
+    Returns metadata with key information column 
 
+    Args:
+         metadata: pd.DataFrame containing metadata of scores
+
+    Return:
+        pd.DataFrame 
+    """
+    
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
 
     metadata['key'] = None
@@ -144,7 +160,7 @@ def load_keys(metadata):
         rel_paths = row['rel_paths']
         fnames = row['fnames']
         
-        base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+        base_path = "../jazz_transcriptions" 
         score_path = f"{base_path}/{rel_paths}/{fnames}.xml"
         
         try: 
@@ -162,6 +178,17 @@ def load_keys(metadata):
 
 
 def load_notes(metadata, keys=False):
+    """
+    Returns notes information of scores
+
+    Args:
+         metadata: pd.DataFrame containing metadata of scores
+         keys: Boolean, True to include column of inferred keys
+
+    Return:
+        pd.DataFrame 
+    """
+    
     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
 
     dfs = []
@@ -169,7 +196,7 @@ def load_notes(metadata, keys=False):
         rel_paths = row['rel_paths']
         fnames = row['fnames']
         
-        base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
+        base_path = "../jazz_transcriptions" 
         notes_path = base_path + "/notes/" + fnames + ".tsv"
         labels_path = base_path + "/labels/" + fnames + ".labels.tsv"
         
@@ -192,6 +219,7 @@ def load_notes(metadata, keys=False):
             df_notes['fnames'] = row['fnames']
             df_notes['rel_paths'] = row['rel_paths']
             df_notes['recording_year'] = row['recording_year']
+            df_notes['year_bin'] = row['year_bin']
 
             df_labels = pd.read_csv(labels_path, sep='\t')
             df_labels['mc'] = df_labels['mc'].astype(int)
@@ -228,20 +256,38 @@ def load_notes(metadata, keys=False):
 
 from music21 import harmony
 
-def label_to_pcs(label):
-    cs = harmony.ChordSymbol(label)
-    pcs = sorted([p.pitchClass for p in cs.pitches])
-    return pcs
+# def label_to_pcs(label):
+#     cs = harmony.ChordSymbol(label)
+#     pcs = sorted([p.pitchClass for p in cs.pitches])
+#     return pcs
 
 
 import re
 def fix_flats(label):
+    """
+    Returns label with music21-compatible flats
+
+    Args:
+         label, string
+
+    Return:
+        label, string
+    """
     label = re.sub(r'([A-Ga-g])bbb', r'\1---', label)
     label = re.sub(r'([A-Ga-g])bb', r'\1--', label)
     label = re.sub(r'([A-Ga-g])b', r'\1-', label)
     return label
 
 def clean_chord_label(label):
+    """
+    Returns label in music21-compatible format 
+
+    Args:
+         label, string
+
+    Return:
+        label, string 
+    """
     if not isinstance(label, str):
         return label
         
@@ -261,9 +307,28 @@ def clean_chord_label(label):
 
 @lru_cache(maxsize=None)
 def parse_chord(label):
+    """
+    Returns label as music21.harmony.ChordSymbol object
+
+    Args:
+         label, string
+
+    Return:
+        label, music21.harmony.ChordSymbol 
+    """
     return m21.harmony.ChordSymbol(label)
 
 def get_ilset(label):
+    """
+    Returns pitch class set from label 
+
+    Args:
+         label: label string
+
+    Return:
+        list of pitches 
+    """
+    
     try:
         chord = parse_chord(label)
         chord_pitches = chord.pitches
@@ -271,5 +336,26 @@ def get_ilset(label):
         return chord_tones
     except Exception as e:
         return np.nan
+
+def bin_years(df, start_year, end_year, inc):
+    """
+    Returns pd.DataFrame with addition of year_bin column, which categorizes scores by year
+
+    Args:
+         df: pd.DataFrame with 'recording_year' column
+         start_year: int of start year of bins
+         end_year: int of end year of bins
+         inc: int of increments of bins
+
+    Return:
+        label, music21.harmony.ChordSymbol 
+    """
+    bins = np.arange(start_year, end_year + inc, inc) 
+    bin_labels = [f"{start}-{start+inc}" for start in bins[:-1]]
+
+    result = df[df['recording_year'].notna()].copy()
+    result['year_bin'] = pd.cut(result['recording_year'], bins=bins, labels=bin_labels, right=False)
+
+    return result
 
 

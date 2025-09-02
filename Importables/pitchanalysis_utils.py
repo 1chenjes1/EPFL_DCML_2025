@@ -6,7 +6,16 @@ import numpy as np
 from scipy.stats import norm
 import music21 as m21
 
-def get_tpc(n):
+def get_fifthsteps(n):
+    """
+    Returns fifth step from note (C=0, G=1, etc.)
+
+    Args:
+        n: string or music21.note.Note object
+
+    Return:
+        integer 
+    """
     base_tpc = {
         'F': -1,
         'C': 0,
@@ -36,7 +45,17 @@ def get_tpc(n):
     except Exception as e:
         return None
 
-def get_note(tpc):
+def get_note(fifth):
+    """
+    Returns note name given the fifth step (0=C, 1=G, etc.)
+
+    Args:
+        fifth: fifth step, integer 
+
+    Return:
+        note String 
+    """
+    
     base_note = {
         -1: 'F',
         0: 'C',
@@ -47,7 +66,7 @@ def get_note(tpc):
         5: 'B'
     }
     try:
-        base_tpc = ((tpc + 1) % 7) - 1
+        base_tpc = ((fifth + 1) % 7) - 1
         note_base = base_note[base_tpc]
 
         accidental = (tpc - base_tpc) // 7
@@ -63,132 +82,132 @@ def get_note(tpc):
     except Exception as e:
         return None    
 
-def create_data(subset, identifier):
-    data = {}
 
-    for row in range(subset.shape[0]):
-        subset_row = subset.iloc[[row]]
+def transpose_note(note, key):
+    """
+    Returns note transposed to C
 
-        if isinstance(identifier, (list, tuple)):
-            key = tuple(subset_row.iloc[0][col] for col in identifier)
-        else:
-            key = subset_row.iloc[0][identifier]
+    Args:
+        note: Note, string or music21.note.Note object
+        key: Key of piece, string or music21.key.Key object
 
-        data[key] = subset_row.iloc[0][['note', 'tpc', 'duration', 'transposed note', 'transposed tpc']]
+    Return:
+        music21.note.Note object
+    """
+    try: 
+        if not isinstance(note, m21.note.Note):
+            note = m21.note.Note(note)
+        if not isinstance(key, m21.key.Key):
+            key = m21.key.Key(key)
+            
+        i = m21.interval.Interval(key.tonic, m21.key.Key('C').tonic)
+
+        note_new = note.transpose(i)
         
-    return data
+    except Exception as e:
+        note_new = np.nan
 
-def transpose_to_C(notes_df):
+    return note_new
+            
+def transpose_to_C(df):
+    """
+    Returns df with all notes transposed to C
+
+    Args:
+        df: pd.DataFrame representation of notes (from general.load_notes())
+
+    Return:
+        pd.DataFrame
+        Transposed notes are found in columns ['pc', 'note', 'tpc']
+        Original notes are found in columns ['old pc', ' old note', 'old tpc']
+    """
+    notes_df = df.copy()
+    notes_df['old pc'] = notes_df['pc']
+    notes_df['old note'] = notes_df['note']
+    notes_df['old tpc'] = notes_df['tpc']
+    
     transposed_pcs = []
     transposed_notes = []
     transposed_tpc = []
     
     for _, row in notes_df.iterrows():
-        
-        try: 
-            note_raw = row['note']
-            note = m21.note.Note(note_raw)
-            key_raw = row['key']
-            key = m21.key.Key(key_raw[0])
-            i = m21.interval.Interval(key.tonic, m21.key.Key('C').tonic)
-    
-            note_new = note.transpose(i)
+     
+        note_raw = row['note']
+        key_raw = row['key']  
+        if isinstance(note_raw, str) and isinstance(key_raw, str):
 
+            note = m21.note.Note(note_raw)  
+            key = m21.key.Key(key_raw.split()[0])
+            note_new = transpose_note(note, key)
+        else:
+            note_new = np.nan
+
+        if isinstance(note_new, m21.note.Note):
             transposed_pcs.append(note_new.pitch.pitchClass)
             transposed_notes.append(note_new.name)
-            transposed_tpc.append(get_tpc(note_new.name))
-            
-        except Exception as e:
-            #print(f'{e}')
-            transposed_pcs.append(np.nan)
-            transposed_notes.append(np.nan)
-            transposed_tpc.append(np.nan)
+            transposed_tpc.append(get_fifthsteps(note_new.name))
+        else:
+            transposed_pcs.append(note_new)
+            transposed_notes.append(note_new)
+            transposed_tpc.append(note_new)
 
-    notes_df['transposed pc'] = transposed_pcs
-    notes_df['transposed note'] = transposed_notes
-    notes_df['transposed tpc'] = transposed_tpc
+        
+    notes_df['pc'] = transposed_pcs
+    notes_df['note'] = transposed_notes
+    notes_df['tpc'] = transposed_tpc
     
     return notes_df
 
-def plot_pitch_distribution(data, identifier, fig_name = False):
-    keys = list(data.keys())
-    num_items = len(keys)
+def plot_pitch_distribution(data_df, title):
+    """
+    Returns plot of pitch profile distribution, coloured by years and normalized and weighed by note duration
+
+    Args:
+        data_df: pd.DataFrame representation of notes with columns (from general.load_notes())
+
+    Return:
+        matplotlib fig, axis
+    """
     
-    fig = plt.figure(figsize=(12, 4.5 * num_items))
-    subfigs = fig.subfigures(nrows=num_items, ncols=1)
+    full_range = pd.DataFrame({
+        'tpc': range(
+            int(data_df['tpc'].min()),
+            int(data_df['tpc'].max()) + 1  # include max
+        )
+    })
+    
+    
+    fig, ax = plt.subplots(figsize=(15, 6)) 
+    
+    year_bins = sorted(
+            data_df["year_bin"].unique(),
+            key=lambda x: int(str(x).split("-")[0])
+        )
 
-    if num_items == 1:
-        subfigs = [subfigs]  # make iterable
-
-    for i, key in enumerate(keys):
-        subfig = subfigs[i]
-
-        # Format title from key (tuple or string)
-        if isinstance(key, tuple):
-            label = " – ".join(str(k) for k in key)
-        else:
-            label = str(key)
-
-        subfig.suptitle(f'{label}', fontsize=14)
-
-        ax = subfig.subplots(nrows=1, ncols=1)
-
-        # Get the pitch profile data:
-        pitch_data = data[key]
-        tpc = pd.DataFrame({
-            'note': pitch_data['note'],
-            'tpc': pitch_data['tpc'],
-            'duration': pitch_data['duration']
-        })
-
+    colors = plt.cm.get_cmap('viridis', len(year_bins))  # Distinct colors
+    
+    for i, key in enumerate(year_bins):
+    
+        pitch_data = data_df[data_df['year_bin'] == key]
+        tpc = pitch_data[['note', 'tpc', 'duration']]
+    
         pitch_counts = tpc.groupby(['note', 'tpc'])['duration'].sum().reset_index(name='weighted_count')
         count = pitch_counts.sort_values('tpc')
         total = count['weighted_count'].sum()
-        count['percentage'] = count['weighted_count'] / total
-
-        # Plot histogram:
-        ax.bar(count['note'], count['percentage'], color='skyblue', edgecolor='black')
-        ax.set_xlabel('Pitch')
-        ax.set_ylabel('Percentage')
-
-    # Global figure title:
-    fig.suptitle(f'Pitch Profiles by {identifier}', fontsize=16)
+        count['percentage'] = (count['weighted_count'] / total)*100
     
-    if fig_name:
-        plt.savefig(f"../Jessica-ERIP2025/Results/{fig_name}")
-
-    plt.show()
-
-# def get_pitch_profiles(metadata):
-#     metadata = metadata[metadata['fnames'] != "Give Thanks - Yohan Kim"]
-#     pitch_profiles = []
+        count = full_range.merge(count, on='tpc', how='left')
+        count = count.fillna({'weighted_count': 0, 'percentage': 0})
+        count['note'] = count['tpc'].apply(get_note)
     
-#     for _, row in metadata.iterrows():
-#         pitch_profile = []
-#         rel_paths = row['rel_paths']
-#         fnames = row['fnames']
-        
-#         base_path = "/Users/Jessica/Documents/ERIP2025/Jessica-ERIP2025/jazz_transcriptions" 
-#         notes_path = base_path + "/notes/" + fnames + ".tsv"
+        ax.plot(count['note'], count['percentage'], color=colors(i), alpha=0.5)
+        ax.scatter(count['note'],count['percentage'], label=key, color=colors(i))
+    
+    ax.set_xlabel('Pitch', fontsize=16)
+    ax.set_ylabel('Percentage %', fontsize=16)
+    ax.set_title(title, fontsize=19)
+    ax.legend(title='Recording Year', fontsize=14)
+    ax.tick_params(axis='both', which='major', labelsize=14,rotation=45)
 
-#         try: 
-#             df_notes = pd.read_csv(notes_path, sep='\t')
-#             df_notes['mc'] = df_notes['mc'].astype(int)
+    return fig, ax
 
-#             df_notes['pc'] = df_notes['midi'] % 24
-#             df_notes['pc'] = df_notes['pc'].apply(int)
-
-#             df_notes['note'] = df_notes['tpc'].apply(ms3.tpc2name)
-#             df_notes['note'] = df_notes['note'].apply(fix_flats)
-        
-#             df_notes['mc_onset'] = df_notes['mc_onset'].astype(str).apply(lambda x: float(Fraction(x)))
-#             df_notes['duration'] = df_notes['duration'].astype(str).apply(lambda x: float(Fraction(x)))
-#             df_notes['time'] = df_notes['mc'] + df_notes['mc_onset']
-
-#             df_notes = df_notes.sort_values(by='time')
-
-#             pitch_profile['artist'] = row['artists']
-#             pitch_profile['workTitle'] = row['workTitle']
-#             pitch_profile['fnames'] = row['fnames']
-#             pitch_profile['rel_paths'] = row['rel_paths']
-#             pitch_profile['recording_year'] = row['recording_year']
