@@ -1,7 +1,7 @@
 # Excellence Research Internship Program 2025: Digital and Cognitive Musicology Lab
 
 This project explores pitch, interval, and chord distributions across music history.  
-It uses `music21`, `pandas`, and other Python libraries for an exploratory analysis of the jazz transcriptions corpus, as well as comparisons between the jazz corpus with the classical corpus.
+It uses `music21`, `scikit-learn` and other Python libraries for an exploratory analysis of the jazz transcriptions corpus, as well as comparisons between the jazz corpus with the classical corpus.
 
 ---
 
